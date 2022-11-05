@@ -1,0 +1,56 @@
+{
+  "name": "@fgp/server",
+  "version": "1.0.0",
+  "description": "Server implementation of the interactive audio player for gramophone tracks",
+  "main": "dist/src/index.js",
+  "scripts": {
+    "start": "yarn run build && yarn run dev",
+    "dev": "MODULE_NAME=$npm_package_name PORT=3000 ts-node-dev --respawn --transpile-only src/index.ts | pino-pretty",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "yarn run lint && yarn run compile",
+    "rebuild": "yarn run clean && yarn run build",
+    "lint": "eslint . --ext .ts",
+    "clean": "[ -d dist ] && rm -f -r dist",
+    "compile": "tsc -p .",
+    "compile:watch": "tsc -w",
+    "pretest": "yarn run compile",
+    "posttest": "yarn run lint",
+    "prettify": "prettier --write \"./src/**/*.{js,ts,json}\""
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/DominikStefancik/Fonoteca-Gramophone-Player.git"
+  },
+  "keywords": [
+    "Node.js",
+    "Typescript",
+    "Graphql",
+    "React",
+    "MongoDB"
+  ],
+  "author": "Dominik Stefancik",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/DominikStefancik/Fonoteca-Gramophone-Player/issues"
+  },
+  "homepage": "https://github.com/DominikStefancik/Fonoteca-Gramophone-Player",
+  "dependencies": {
+    "papaparse": "^5.3.2",
+    "pino": "^8.7.0",
+    "xml2js": "^0.4.23"
+  },
+  "devDependencies": {
+    "@types/node": "^18.11.9",
+    "@types/papaparse": "^5.3.5",
+    "@types/pino": "^7.0.5",
+    "@types/xml2js": "^0.4.11",
+    "@typescript-eslint/eslint-plugin": "^5.42.0",
+    "@typescript-eslint/parser": "^5.42.0",
+    "eslint": "^8.26.0",
+    "pino-pretty": "^9.1.1",
+    "prettier": "^2.7.1",
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^4.8.4",
+    "yarn": "^1.22.19"
+  }
+}

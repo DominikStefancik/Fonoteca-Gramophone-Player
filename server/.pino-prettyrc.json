@@ -1,0 +1,5 @@
+{
+  "colorize": true,
+  "translateTime": "yyyy-dd-mm hh:MM:ss TT",
+  "ignore": "pid,hostname"
+}

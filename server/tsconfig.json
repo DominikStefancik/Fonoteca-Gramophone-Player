@@ -1,0 +1,22 @@
+{
+  "extensions": [".tsx", ".ts", ".js"],
+  "moduleResolution": "node",
+  "compilerOptions": {
+    "rootDir": ".",
+    "outDir": "dist",
+    "baseUrl": ".",
+    "allowSyntheticDefaultImports": true,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "noImplicitReturns": false
+  },"include": [
+  "src/**/*.ts",
+  "test/**/*.ts"
+],
+  "exclude": [
+    "./src/**/*.test.js",
+    "./src/**/*.spec.js",
+    "./src/tests",
+    "dist"
+  ]
+}
