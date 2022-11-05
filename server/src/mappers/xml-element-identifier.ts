@@ -1,4 +1,4 @@
-export enum XmlObjectIdentifier {
+export enum XmlElementIdentifier {
   MATERIAL = 'Material',
   PRODUCTION = 'Production',
   MUSICAL_GENRE = 'Musical genre',

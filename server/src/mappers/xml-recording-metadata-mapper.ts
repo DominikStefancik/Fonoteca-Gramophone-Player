@@ -1,10 +1,12 @@
-import fs from 'fs';
 import { Logger } from 'pino';
-import { AudioTrack } from '../model/audio-track';
-import { MetadataFileType } from '../model/metadata-file-type';
-import { Recording } from '../model/recording';
-import { RecordingCarrier } from '../model/recording-carrier';
-import { XmlObjectIdentifier } from './xml-object-identifier';
+import { AudioTrack } from '../models/audio-track';
+import { MetadataType } from '../models/xml-metadata/metadata-type';
+import { Recording } from '../models/recording';
+import { RecordingCarrier } from '../models/recording-carrier';
+import { ObjElement } from '../models/xml-metadata/obj-element';
+import { ObjDetailElement } from '../models/xml-metadata/objDetail-element';
+import { FNBase32Mono } from '../models/xml-metadata/root-element';
+import { XmlElementIdentifier } from './xml-element-identifier';
 
 const AUDIO_FILE_RESOURCE_BASE_URL = 'https://www.fonoteca.ch/imgs-mpn';
 const IMAGE_FILE_RESOURCE_BASE_URL = 'https://www.fonoteca.ch/imgs-jpg';
@@ -12,96 +14,91 @@ const IMAGE_FILE_RESOURCE_BASE_URL = 'https://www.fonoteca.ch/imgs-jpg';
 export class XmlRecordingMetadataMapper {
   constructor(private readonly logger: Logger) {}
 
-  public map(recordingMetadata: any[]): Recording[] {
-    return recordingMetadata.map((metadata) =>
-      this.mapSingleRecording(metadata.FNBase32Mono.Objects[0].Obj[0])
-    );
+  public map(recordingMetadata: FNBase32Mono[]): Recording[] {
+    return recordingMetadata.map((metadata) => {
+      return this.mapSingleRecording(metadata.Objects[0].Obj[0]);
+    });
   }
 
-  private mapSingleRecording(recordingMetadata: any): Recording {
+  private mapSingleRecording(recordingMetadata: ObjElement): Recording {
     const fileIdentifier = recordingMetadata.objCallNbr[0];
     this.logger.debug(`Mapping metadata: ${fileIdentifier}`);
 
-    const title = fileIdentifier.startsWith(MetadataFileType.HR)
-      ? this.findObjectDetailValue(recordingMetadata.objDetail, XmlObjectIdentifier.CARRIER_TITLE)
+    const title = fileIdentifier.startsWith(MetadataType.HR)
+      ? this.findObjectDetailValue(recordingMetadata.objDetail, XmlElementIdentifier.CARRIER_TITLE)
       : undefined;
-    const imageFileUrl = fileIdentifier.startsWith(MetadataFileType.HR)
+    const imageFileUrl = fileIdentifier.startsWith(MetadataType.HR)
       ? `${IMAGE_FILE_RESOURCE_BASE_URL}/${fileIdentifier}.0.JPG`
       : undefined;
 
     return {
-      id: recordingMetadata.$.uniqueKey,
+      id: recordingMetadata.attributes.uniqueKey,
       title,
       carrier: this.getRecordingCarrier(recordingMetadata),
       recordLabel: this.findObjectDetailValue(
         recordingMetadata.objDetail,
-        XmlObjectIdentifier.RECORD_LABEL
+        XmlElementIdentifier.RECORD_LABEL
       ),
-      category: recordingMetadata.objSchema[0].objSchemaExtensionK[0]._,
+      category: recordingMetadata.objSchema[0].objSchemaExtensionK[0].value,
       productionYear: this.findObjectDetailValue(
         recordingMetadata.objDetail,
-        XmlObjectIdentifier.PRODUCTION_YEAR
+        XmlElementIdentifier.PRODUCTION_YEAR
       ),
       musicalGenre: this.findObjectDetailValue(
         recordingMetadata.objDetail,
-        XmlObjectIdentifier.MUSICAL_GENRE
+        XmlElementIdentifier.MUSICAL_GENRE
       ),
       tracks: this.getTracks(fileIdentifier, recordingMetadata.objDetail),
       collection: recordingMetadata.objItem[0].objItemCollectionK
-        ? recordingMetadata.objItem[0].objItemCollectionK[0]._
+        ? recordingMetadata.objItem[0].objItemCollectionK[0].value
         : undefined,
       dimension: this.findObjectDetailValue(
         recordingMetadata.objDetail,
-        XmlObjectIdentifier.DIMENSION
+        XmlElementIdentifier.DIMENSION
       ),
       recordingPlace: this.findObjectDetailValue(
         recordingMetadata.objDetail,
-        XmlObjectIdentifier.RECORDING_PLACE
+        XmlElementIdentifier.RECORDING_PLACE
       ),
       recordingLocality: this.findObjectDetailValue(
         recordingMetadata.objDetail,
-        XmlObjectIdentifier.RECORDING_LOCALITY
+        XmlElementIdentifier.RECORDING_LOCALITY
       ),
       imageFileUrl,
     };
   }
 
   private findObjectDetailValue(
-    objectDetailList: any[],
-    identifier: XmlObjectIdentifier
+    objectDetailList: ObjDetailElement[],
+    identifier: XmlElementIdentifier
   ): string | undefined {
     const detailObject = objectDetailList.find(
-      (object) => object.objDetailFieldK[0]._ === identifier
+      (object) => object.objDetailFieldK[0].value === identifier
     );
 
-    return detailObject ? detailObject.objDetailValueR[0]._ : undefined;
+    return detailObject ? detailObject.objDetailValueR[0].value : undefined;
   }
 
-  private getRecordingCarrier(recordingMetadata: any): RecordingCarrier {
-    const fileIdentifier = recordingMetadata.objCallNbr[0];
-    const conditionObject = recordingMetadata.objItem.find(
-      (itemObject) => itemObject.objItemCondition
-    );
+  private getRecordingCarrier(objElement: ObjElement): RecordingCarrier {
+    const fileIdentifier = objElement.objCallNbr[0];
+    const conditionObject = objElement.objItem.find((itemObject) => itemObject.objItemCondition);
 
-    const type2 = fileIdentifier.startsWith(MetadataFileType.HR)
-      ? this.findObjectDetailValue(recordingMetadata.objDetail, XmlObjectIdentifier.CARRIER_TYPE)
+    const type2 = fileIdentifier.startsWith(MetadataType.HR)
+      ? this.findObjectDetailValue(objElement.objDetail, XmlElementIdentifier.CARRIER_TYPE)
       : undefined;
 
     return {
-      type1: recordingMetadata.objSchema[0].objSchemaFormatK[0]._,
+      type1: objElement.objSchema[0].objSchemaFormatK[0].value,
       type2,
-      material: this.findObjectDetailValue(
-        recordingMetadata.objDetail,
-        XmlObjectIdentifier.MATERIAL
-      ),
+      material: this.findObjectDetailValue(objElement.objDetail, XmlElementIdentifier.MATERIAL),
       condition: conditionObject ? conditionObject.objItemCondition[0] : undefined,
     };
   }
 
-  private getTracks(fileIdentifier: string, objectDetailList: any[]): AudioTrack[] {
+  private getTracks(fileIdentifier: string, objectDetailList: ObjDetailElement[]): AudioTrack[] {
     const tracks: AudioTrack[] = [];
     const allAudioTracks = objectDetailList.filter(
-      (object) => object.objDetailFieldK[0]._ === XmlObjectIdentifier.AUDIO_TRACK
+      (object) => object.objDetailFieldK[0].value === XmlElementIdentifier.AUDIO_TRACK
     );
     const groupIdList = allAudioTracks.map((trackObject) => {
       const value = trackObject.objDetailGrp[0];
@@ -116,11 +113,11 @@ export class XmlRecordingMetadataMapper {
 
       const indexAudio = this.findObjectDetailValue(
         trackDetailsObjectList,
-        XmlObjectIdentifier.INDEX_AUDIO
+        XmlElementIdentifier.INDEX_AUDIO
       );
       const audioTrack = this.findObjectDetailValue(
         trackDetailsObjectList,
-        XmlObjectIdentifier.AUDIO_TRACK
+        XmlElementIdentifier.AUDIO_TRACK
       );
 
       const audioFileUrls: string[] = [];
@@ -136,14 +133,14 @@ export class XmlRecordingMetadataMapper {
       }
 
       const recordingTrack = {
-        author: this.findObjectDetailValue(trackDetailsObjectList, XmlObjectIdentifier.AUTHOR),
+        author: this.findObjectDetailValue(trackDetailsObjectList, XmlElementIdentifier.AUTHOR),
         musicalWorkTitle: this.findObjectDetailValue(
           trackDetailsObjectList,
-          XmlObjectIdentifier.MUSICAL_WORK_TITLE
+          XmlElementIdentifier.MUSICAL_WORK_TITLE
         ),
         recordingTime: this.findObjectDetailValue(
           trackDetailsObjectList,
-          XmlObjectIdentifier.RECORDING_TIME
+          XmlElementIdentifier.RECORDING_TIME
         ),
         indexAudio,
         audioFileUrls,

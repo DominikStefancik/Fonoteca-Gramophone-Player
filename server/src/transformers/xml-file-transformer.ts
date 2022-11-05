@@ -2,12 +2,21 @@ import * as fs from 'fs';
 import { Logger } from 'pino';
 import * as xml2js from 'xml2js';
 
-export class XmlFileTransformer {
-  public constructor(private readonly logger: Logger) {}
+interface XmlFileTransformerConfig {
+  attrkey: string;
+  normalize: boolean;
+  charkey: string;
+}
 
-  public transformFiles(filePathList: string[]): any[] {
-    const xmlParser = new xml2js.Parser();
-    const parserFiles = [];
+export class XmlFileTransformer {
+  public constructor(
+    private readonly config: XmlFileTransformerConfig,
+    private readonly logger: Logger
+  ) {}
+
+  public transformFiles<T>(filePathList: string[], rootElement?: string): T[] {
+    const xmlParser = new xml2js.Parser(this.config);
+    const parserFiles: T[] = [];
 
     for (const filePath of filePathList) {
       this.logger.debug(`Parsing file: ${filePath}`);
@@ -19,7 +28,7 @@ export class XmlFileTransformer {
           this.logger.error(error);
         }
 
-        parserFiles.push(data);
+        parserFiles.push(rootElement ? data[rootElement] : data);
       });
     }
 
